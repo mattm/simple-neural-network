@@ -70,42 +70,56 @@ class NeuralNetwork:
     def train(self, training_inputs, training_outputs):
         self.feed_forward(training_inputs)
 
+        # 1. Output neuron deltas
+
         # For each output layer neron, calculate the delta value δ aka
-        pd_output_errors_wrt_total_net_input = [0] * len(self.output_layer.neurons)
+        pd_errors_wrt_output_neuron_total_net_input = [0] * len(self.output_layer.neurons)
         for o in range(len(self.output_layer.neurons)):
 
             # ∂E/∂zⱼ
-            pd_output_errors_wrt_total_net_input[o] = self.output_layer.neurons[o].calculate_pd_error_wrt_total_net_input(training_outputs[o])
+            pd_errors_wrt_output_neuron_total_net_input[o] = self.output_layer.neurons[o].calculate_pd_error_wrt_total_net_input(training_outputs[o])
 
-            # Update weights from hidden layer to output layer
-            for w_ho in range(len(self.output_layer.neurons[o].weights)):
-
-                # ∂Eⱼ/∂wᵢⱼ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢⱼ
-                pd_error_wrt_weight = pd_output_errors_wrt_total_net_input[o] * self.output_layer.neurons[o].calculate_pd_total_net_input_wrt_weight(w_ho)
-
-                # Δw = α * ∂Eⱼ/∂wᵢ
-                self.output_layer.neurons[o].weights[w_ho] -= self.LEARNING_RATE * pd_error_wrt_weight
+        # 2. Hidden neuron deltas
 
         # Calculate the errors for the hidden layers
         # We're calculating how much the errors of the output neurons change based on the output of each hidden layer neuron
+        pd_errors_wrt_hidden_neuron_total_net_input = [0] * len(self.hidden_layer.neurons)
         for h in range(len(self.hidden_layer.neurons)):
 
             # We need to calculate the derivative of the error with respect to the output of each hidden layer neuron
             # dE/dyⱼ = Σ ∂E/∂zⱼ * ∂z/∂yⱼ = Σ ∂E/∂zⱼ * wᵢⱼ
             d_error_wrt_hidden_neuron_output = 0
             for o in range(len(self.output_layer.neurons)):
-                d_error_wrt_hidden_neuron_output += pd_output_errors_wrt_total_net_input[o] * self.output_layer.neurons[o].weights[h]
+
+                # TODO: This should use the original weights, not the updated ones
+                # and double check the calculations in the blog post
+                d_error_wrt_hidden_neuron_output += pd_errors_wrt_output_neuron_total_net_input[o] * self.output_layer.neurons[o].weights[h]
 
             # ∂E/∂zⱼ = dE/dyⱼ * ∂zⱼ/∂
-            pd_error_wrt_total_net_input = d_error_wrt_hidden_neuron_output * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_input()
+            pd_errors_wrt_hidden_neuron_total_net_input[h] = d_error_wrt_hidden_neuron_output * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_input()
 
-            # Update weights from input layer to hidden layer
+        # 3. Update output neuron weights
+
+        # Update weights from hidden layer to output layer
+        for o in range(len(self.output_layer.neurons)):
+            for w_ho in range(len(self.output_layer.neurons[o].weights)):
+
+                # ∂Eⱼ/∂wᵢⱼ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢⱼ
+                pd_error_wrt_weight = pd_errors_wrt_output_neuron_total_net_input[o] * self.output_layer.neurons[o].calculate_pd_total_net_input_wrt_weight(w_ho)
+
+                # Δw = α * ∂Eⱼ/∂wᵢ
+                self.output_layer.neurons[o].weights[w_ho] -= self.LEARNING_RATE * pd_error_wrt_weight
+
+        # # 4. Update hidden neuron weights
+        # # Update weights from input layer to hidden layer
+        for h in range(len(self.hidden_layer.neurons)):
             for w_ih in range(len(self.hidden_layer.neurons[h].weights)):
 
                 # ∂Eⱼ/∂wᵢ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢ
-                pd_error_wrt_weight = pd_error_wrt_total_net_input * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_weight(w_ih)
+                pd_error_wrt_weight = pd_errors_wrt_hidden_neuron_total_net_input[h] * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_weight(w_ih)
 
                 # Δw = α * ∂Eⱼ/∂wᵢ
+
                 self.hidden_layer.neurons[h].weights[w_ih] -= self.LEARNING_RATE * pd_error_wrt_weight
 
     def calculate_total_error(self, training_sets):
@@ -115,7 +129,7 @@ class NeuralNetwork:
             self.feed_forward(training_inputs)
             for o in range(len(training_outputs)):
                 total_error += self.output_layer.neurons[o].calculate_error(training_outputs[o])
-        return total_error / len(self.output_layer.neurons)
+        return total_error
 
 class NeuronLayer:
     def __init__(self, num_neurons, bias):
