@@ -18,8 +18,6 @@ import math
 #   https://www4.rgu.ac.uk/files/chapter3%20-%20bp.pdf
 
 class NeuralNetwork:
-
-    # The learning rate, α
     LEARNING_RATE = 0.5
 
     def __init__(self, num_inputs, num_hidden, num_outputs, hidden_layer_weights = None, hidden_layer_bias = None, output_layer_weights = None, output_layer_bias = None):
@@ -71,8 +69,6 @@ class NeuralNetwork:
         self.feed_forward(training_inputs)
 
         # 1. Output neuron deltas
-
-        # For each output layer neron, calculate the delta value δ aka
         pd_errors_wrt_output_neuron_total_net_input = [0] * len(self.output_layer.neurons)
         for o in range(len(self.output_layer.neurons)):
 
@@ -80,9 +76,6 @@ class NeuralNetwork:
             pd_errors_wrt_output_neuron_total_net_input[o] = self.output_layer.neurons[o].calculate_pd_error_wrt_total_net_input(training_outputs[o])
 
         # 2. Hidden neuron deltas
-
-        # Calculate the errors for the hidden layers
-        # We're calculating how much the errors of the output neurons change based on the output of each hidden layer neuron
         pd_errors_wrt_hidden_neuron_total_net_input = [0] * len(self.hidden_layer.neurons)
         for h in range(len(self.hidden_layer.neurons)):
 
@@ -90,17 +83,12 @@ class NeuralNetwork:
             # dE/dyⱼ = Σ ∂E/∂zⱼ * ∂z/∂yⱼ = Σ ∂E/∂zⱼ * wᵢⱼ
             d_error_wrt_hidden_neuron_output = 0
             for o in range(len(self.output_layer.neurons)):
-
-                # TODO: This should use the original weights, not the updated ones
-                # and double check the calculations in the blog post
                 d_error_wrt_hidden_neuron_output += pd_errors_wrt_output_neuron_total_net_input[o] * self.output_layer.neurons[o].weights[h]
 
             # ∂E/∂zⱼ = dE/dyⱼ * ∂zⱼ/∂
             pd_errors_wrt_hidden_neuron_total_net_input[h] = d_error_wrt_hidden_neuron_output * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_input()
 
         # 3. Update output neuron weights
-
-        # Update weights from hidden layer to output layer
         for o in range(len(self.output_layer.neurons)):
             for w_ho in range(len(self.output_layer.neurons[o].weights)):
 
@@ -110,8 +98,7 @@ class NeuralNetwork:
                 # Δw = α * ∂Eⱼ/∂wᵢ
                 self.output_layer.neurons[o].weights[w_ho] -= self.LEARNING_RATE * pd_error_wrt_weight
 
-        # # 4. Update hidden neuron weights
-        # # Update weights from input layer to hidden layer
+        # 4. Update hidden neuron weights
         for h in range(len(self.hidden_layer.neurons)):
             for w_ih in range(len(self.hidden_layer.neurons[h].weights)):
 
@@ -119,7 +106,6 @@ class NeuralNetwork:
                 pd_error_wrt_weight = pd_errors_wrt_hidden_neuron_total_net_input[h] * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_weight(w_ih)
 
                 # Δw = α * ∂Eⱼ/∂wᵢ
-
                 self.hidden_layer.neurons[h].weights[w_ih] -= self.LEARNING_RATE * pd_error_wrt_weight
 
     def calculate_total_error(self, training_sets):
@@ -230,10 +216,14 @@ class Neuron:
 
 ###
 
+# Blog post example:
+
 nn = NeuralNetwork(2, 2, 2, hidden_layer_weights=[0.15, 0.2, 0.25, 0.3], hidden_layer_bias=0.35, output_layer_weights=[0.4, 0.45, 0.5, 0.55], output_layer_bias=0.6)
 for i in range(10000):
     nn.train([0.05, 0.1], [0.01, 0.99])
     print(i, round(nn.calculate_total_error([[[0.05, 0.1], [0.01, 0.99]]]), 9))
+
+# XOR example:
 
 # training_sets = [
 #     [[0, 0], [0]],
@@ -242,17 +232,8 @@ for i in range(10000):
 #     [[1, 1], [0]]
 # ]
 
-# training_sets = [
-#     [[0.1, 0.2], [0.3, 0.4]],
-#     [[0.4, 0.5], [0.6, 0.7]],
-#     [[0.7, 0.8], [0.9, 1]]
-# ]
-
 # nn = NeuralNetwork(len(training_sets[0][0]), 5, len(training_sets[0][1]))
 # for i in range(10000):
 #     training_inputs, training_outputs = random.choice(training_sets)
 #     nn.train(training_inputs, training_outputs)
-#     # print(i, nn.calculate_total_error(training_sets))
-
-# print(nn.calculate_total_error(training_sets))
-# nn.inspect()
+#     print(i, nn.calculate_total_error(training_sets))
