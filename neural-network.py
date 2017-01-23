@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+#python3 neural-network.py
+
+# chmod +x neural-network.py
+# ./neural-network.py
+
+# https://github.com/mattm/simple-neural-network
+# further pull request cf this one: https://github.com/mattm/simple-neural-network/pull/2/commits/14abf4fbc60478f4126fa14b61ef9f057fb4ad86
+# https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+
 import random
 import math
 
@@ -219,9 +231,14 @@ class Neuron:
 # Blog post example:
 
 nn = NeuralNetwork(2, 2, 2, hidden_layer_weights=[0.15, 0.2, 0.25, 0.3], hidden_layer_bias=0.35, output_layer_weights=[0.4, 0.45, 0.5, 0.55], output_layer_bias=0.6)
-for i in range(10000):
+for i in range(2):  # instead of 10000 to check the bias update issues
+    print('-------')
+    nn.inspect()
     nn.train([0.05, 0.1], [0.01, 0.99])
-    print(i, round(nn.calculate_total_error([[[0.05, 0.1], [0.01, 0.99]]]), 9))
+    print(i+1, round(nn.calculate_total_error([[[0.05, 0.1], [0.01, 0.99]]]), 9))
+    print()
+
+print('======')
 
 # XOR example:
 
@@ -237,3 +254,5 @@ for i in range(10000):
 #     training_inputs, training_outputs = random.choice(training_sets)
 #     nn.train(training_inputs, training_outputs)
 #     print(i, nn.calculate_total_error(training_sets))
+
+
