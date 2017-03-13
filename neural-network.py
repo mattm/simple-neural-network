@@ -22,27 +22,46 @@ class NeuralNetwork:
 
     def __init__(self, num_inputs, num_hidden, num_outputs, hidden_layer_weights = None, hidden_layer_bias = None, output_layer_weights = None, output_layer_bias = None):
         self.num_inputs = num_inputs
-
-        self.hidden_layer = NeuronLayer(num_hidden, hidden_layer_bias)
+        
+        self.hidden_layer = []
+        for i in range(len(num_hidden)):
+            self.hidden_layer.append(NeuronLayer(num_hidden[i], hidden_layer_bias[i]))
         self.output_layer = NeuronLayer(num_outputs, output_layer_bias)
 
-        self.init_weights_from_inputs_to_hidden_layer_neurons(hidden_layer_weights)
+        self.init_weights_from_inputs_to_hidden_layer_neurons(hidden_layer_weights[0])
+        self.init_weights_between_hidden_layer_neurons(hidden_layer_weights)
         self.init_weights_from_hidden_layer_neurons_to_output_layer_neurons(output_layer_weights)
+
+        self.inspect()
 
     def init_weights_from_inputs_to_hidden_layer_neurons(self, hidden_layer_weights):
         weight_num = 0
-        for h in range(len(self.hidden_layer.neurons)):
+        for h in range(len(self.hidden_layer[0].neurons)):
             for i in range(self.num_inputs):
                 if not hidden_layer_weights:
-                    self.hidden_layer.neurons[h].weights.append(random.random())
+                    self.hidden_layer[0].neurons[h].weights.append(random.random())
                 else:
-                    self.hidden_layer.neurons[h].weights.append(hidden_layer_weights[weight_num])
+                    self.hidden_layer[0].neurons[h].weights.append(hidden_layer_weights[weight_num])
                 weight_num += 1
+    
+    """
+    Creates the connections between each hidden layer.
+    """
+    def init_weights_between_hidden_layer_neurons(self, hidden_layer_weights):
+        weight_num = 0
+        for l in range(len(hidden_layer_weights) - 1):
+            for h in range(len(self.hidden_layer[l+1].neurons)):
+                for i in range(len(self.hidden_layer[l].neurons)):
+                    if not hidden_layer_weights[l+1]:
+                        self.hidden_layer[l+1].neurons[h].weights.append(random.random());
+                    else:
+                        self.hidden_layer[l+1].neurons[h].weights.append(hidden_layer_weights[l+1][weight_num]);
+                    weight_num += 1;
 
     def init_weights_from_hidden_layer_neurons_to_output_layer_neurons(self, output_layer_weights):
         weight_num = 0
         for o in range(len(self.output_layer.neurons)):
-            for h in range(len(self.hidden_layer.neurons)):
+            for h in range(len(self.hidden_layer[-1].neurons)):
                 if not output_layer_weights:
                     self.output_layer.neurons[o].weights.append(random.random())
                 else:
@@ -52,17 +71,21 @@ class NeuralNetwork:
     def inspect(self):
         print('------')
         print('* Inputs: {}'.format(self.num_inputs))
-        print('------')
-        print('Hidden Layer')
-        self.hidden_layer.inspect()
+        for layer in self.hidden_layer:
+            print('------')
+            print('Hidden Layer')
+            layer.inspect()
         print('------')
         print('* Output Layer')
         self.output_layer.inspect()
         print('------')
 
     def feed_forward(self, inputs):
-        hidden_layer_outputs = self.hidden_layer.feed_forward(inputs)
-        return self.output_layer.feed_forward(hidden_layer_outputs)
+        # The activation will update with each pass through the network.
+        activation = inputs;
+        for layer in self.hidden_layer:
+            activation = layer.feed_forward(activation)
+        return self.output_layer.feed_forward(activation)
 
     # Uses online learning, ie updating the weights after each training case
     def train(self, training_inputs, training_outputs):
@@ -76,17 +99,23 @@ class NeuralNetwork:
             pd_errors_wrt_output_neuron_total_net_input[o] = self.output_layer.neurons[o].calculate_pd_error_wrt_total_net_input(training_outputs[o])
 
         # 2. Hidden neuron deltas
-        pd_errors_wrt_hidden_neuron_total_net_input = [0] * len(self.hidden_layer.neurons)
-        for h in range(len(self.hidden_layer.neurons)):
+        pd_errors_wrt_hidden_neuron_total_net_input = [];
+        for i in range(len(self.hidden_layer)):
+            pd_errors_wrt_hidden_neuron_total_net_input = [[0] * len(self.hidden_layer[-1 - i].neurons)] + pd_errors_wrt_hidden_neuron_total_net_input;
+            for h in range(len(self.hidden_layer[-1 - i].neurons)):
 
-            # We need to calculate the derivative of the error with respect to the output of each hidden layer neuron
-            # dE/dyⱼ = Σ ∂E/∂zⱼ * ∂z/∂yⱼ = Σ ∂E/∂zⱼ * wᵢⱼ
-            d_error_wrt_hidden_neuron_output = 0
-            for o in range(len(self.output_layer.neurons)):
-                d_error_wrt_hidden_neuron_output += pd_errors_wrt_output_neuron_total_net_input[o] * self.output_layer.neurons[o].weights[h]
+                # We need to calculate the derivative of the error with respect to the output of each hidden layer neuron
+                # dE/dyⱼ = Σ ∂E/∂zⱼ * ∂z/∂yⱼ = Σ ∂E/∂zⱼ * wᵢⱼ
+                d_error_wrt_hidden_neuron_output = 0
+                if i == 0:
+                    for o in range(len(self.output_layer.neurons)):
+                        d_error_wrt_hidden_neuron_output += pd_errors_wrt_output_neuron_total_net_input[o] * self.output_layer.neurons[o].weights[h]
+                else: 
+                    for o in range(len(self.hidden_layer[-i].neurons)):
+                        d_error_wrt_hidden_neuron_output += pd_errors_wrt_hidden_neuron_total_net_input[1][o] * self.hidden_layer[-i].neurons[o].weights[h]
 
-            # ∂E/∂zⱼ = dE/dyⱼ * ∂zⱼ/∂
-            pd_errors_wrt_hidden_neuron_total_net_input[h] = d_error_wrt_hidden_neuron_output * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_input()
+                # ∂E/∂zⱼ = dE/dyⱼ * ∂zⱼ/∂
+                pd_errors_wrt_hidden_neuron_total_net_input[0][h] = d_error_wrt_hidden_neuron_output * self.hidden_layer[-i - 1].neurons[h].calculate_pd_total_net_input_wrt_input()
 
         # 3. Update output neuron weights
         for o in range(len(self.output_layer.neurons)):
@@ -99,14 +128,16 @@ class NeuralNetwork:
                 self.output_layer.neurons[o].weights[w_ho] -= self.LEARNING_RATE * pd_error_wrt_weight
 
         # 4. Update hidden neuron weights
-        for h in range(len(self.hidden_layer.neurons)):
-            for w_ih in range(len(self.hidden_layer.neurons[h].weights)):
+        for l in range(len(self.hidden_layer)):
+            for h in range(len(self.hidden_layer[i].neurons)):
 
-                # ∂Eⱼ/∂wᵢ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢ
-                pd_error_wrt_weight = pd_errors_wrt_hidden_neuron_total_net_input[h] * self.hidden_layer.neurons[h].calculate_pd_total_net_input_wrt_weight(w_ih)
+                for w_ih in range(len(self.hidden_layer[i].neurons[h].weights)):
 
-                # Δw = α * ∂Eⱼ/∂wᵢ
-                self.hidden_layer.neurons[h].weights[w_ih] -= self.LEARNING_RATE * pd_error_wrt_weight
+                    # ∂Eⱼ/∂wᵢ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢ
+                    pd_error_wrt_weight = pd_errors_wrt_hidden_neuron_total_net_input[i][h] * self.hidden_layer[i].neurons[h].calculate_pd_total_net_input_wrt_weight(w_ih)
+
+                    # Δw = α * ∂Eⱼ/∂wᵢ
+                    self.hidden_layer[i].neurons[h].weights[w_ih] -= self.LEARNING_RATE * pd_error_wrt_weight
 
     def calculate_total_error(self, training_sets):
         total_error = 0
@@ -218,7 +249,7 @@ class Neuron:
 
 # Blog post example:
 
-nn = NeuralNetwork(2, 2, 2, hidden_layer_weights=[0.15, 0.2, 0.25, 0.3], hidden_layer_bias=0.35, output_layer_weights=[0.4, 0.45, 0.5, 0.55], output_layer_bias=0.6)
+nn = NeuralNetwork(2, [2, 2], 2, hidden_layer_weights=[[0.15, 0.2, 0.25, 0.3], [0.15, 0.2, 0.25, 0.3]], hidden_layer_bias=[0.35, 0.35], output_layer_weights=[0.4, 0.45, 0.5, 0.55], output_layer_bias=0.6)
 for i in range(10000):
     nn.train([0.05, 0.1], [0.01, 0.99])
     print(i, round(nn.calculate_total_error([[[0.05, 0.1], [0.01, 0.99]]]), 9))
