@@ -1,21 +1,6 @@
 import random
 import math
 
-#
-# Shorthand:
-#   "pd_" as a variable prefix means "partial derivative"
-#   "d_" as a variable prefix means "derivative"
-#   "_wrt_" is shorthand for "with respect to"
-#   "w_ho" and "w_ih" are the index of weights from hidden to output layer neurons and input to hidden layer neurons respectively
-#
-# Comment references:
-#
-# [1] Wikipedia article on Backpropagation
-#   http://en.wikipedia.org/wiki/Backpropagation#Finding_the_derivative_of_the_error
-# [2] Neural Networks for Machine Learning course on Coursera by Geoffrey Hinton
-#   https://class.coursera.org/neuralnets-2012-001/lecture/39
-# [3] The Back Propagation Algorithm
-#   https://www4.rgu.ac.uk/files/chapter3%20-%20bp.pdf
 
 class NeuralNetwork:
     LEARNING_RATE = 0.5
@@ -98,6 +83,9 @@ class NeuralNetwork:
                 # Δw = α * ∂Eⱼ/∂wᵢ
                 self.output_layer.neurons[o].weights[w_ho] -= self.LEARNING_RATE * pd_error_wrt_weight
 
+                pd_errors_wrt_weight = pd_errors_wrt_output_neuron_total_net_input[o] * 1
+                self.output_layer.neurons[o].bias -= self.LEARNING_RATE * pd_error_wrt_weight
+
         # 4. Update hidden neuron weights
         for h in range(len(self.hidden_layer.neurons)):
             for w_ih in range(len(self.hidden_layer.neurons[h].weights)):
@@ -107,6 +95,9 @@ class NeuralNetwork:
 
                 # Δw = α * ∂Eⱼ/∂wᵢ
                 self.hidden_layer.neurons[h].weights[w_ih] -= self.LEARNING_RATE * pd_error_wrt_weight
+
+                pd_errors_wrt_weight = pd_errors_wrt_hidden_neuron_total_net_input[o] * 1
+                self.hidden_layer.neurons[o].bias -= self.LEARNING_RATE * pd_error_wrt_weight
 
     def calculate_total_error(self, training_sets):
         total_error = 0
